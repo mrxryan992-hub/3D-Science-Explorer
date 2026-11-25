@@ -1,0 +1,207 @@
+{
+  "entities": {
+    "UserProgress": {
+      "title": "UserProgress",
+      "description": "Private learner or educator profile, SMP/SMA mode, 3D avatar configuration, XP, quiz stats, and badges.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 24 },
+        "accountType": { "type": "string", "enum": ["student", "teacher"] },
+        "gradeBand": { "type": "string", "enum": ["SMP", "SMA"] },
+        "schoolName": { "type": "string", "minLength": 0, "maxLength": 80 },
+        "avatarConfig": { "type": "object" },
+        "xp": { "type": "number" },
+        "pts": { "type": "number" },
+        "wrong": { "type": "number" },
+        "badges": { "type": "array" },
+        "read": { "type": "object" },
+        "quiz": { "type": "object" },
+        "daily": { "type": "object" },
+        "sims": { "type": "object" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "name", "accountType", "gradeBand", "schoolName", "avatarConfig", "xp", "pts", "wrong", "badges", "read", "quiz", "daily", "sims", "updatedAt"]
+    },
+    "LeaderboardEntry": {
+      "title": "LeaderboardEntry",
+      "description": "Non-PII public leaderboard entry with SMP/SMA track, XP, weekly/daily totals, and 3D avatar styling.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 24 },
+        "accountType": { "type": "string", "enum": ["student", "teacher"] },
+        "gradeBand": { "type": "string", "enum": ["SMP", "SMA"] },
+        "avatarConfig": { "type": "object" },
+        "xp": { "type": "number" },
+        "weeklyXp": { "type": "number" },
+        "dailyXp": { "type": "number" },
+        "level": { "type": "number" },
+        "isPublic": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "name", "accountType", "gradeBand", "avatarConfig", "xp", "weeklyXp", "dailyXp", "level", "isPublic", "updatedAt"]
+    },
+    "AdminRole": {
+      "title": "AdminRole",
+      "description": "Authoritative admin role grant keyed by Firebase Auth UID.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "grantedBy": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "grantedBy", "createdAt"]
+    },
+    "SchoolVerification": {
+      "title": "SchoolVerification",
+      "description": "School registration and admin verification record.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "city": { "type": "string", "minLength": 2, "maxLength": 50 },
+        "level": { "type": "string", "enum": ["SMP", "SMA", "SMP & SMA"] },
+        "status": { "type": "string", "enum": ["pending", "verified", "rejected"] },
+        "requestedByUid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "verifiedByUid": { "type": "string", "minLength": 0, "maxLength": 128 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "city", "level", "status", "requestedByUid", "verifiedByUid", "updatedAt"]
+    },
+    "Classroom": {
+      "title": "Classroom",
+      "description": "Class workspace created by a Teacher for SMP or SMA students.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "minLength": 2, "maxLength": 60 },
+        "code": { "type": "string", "minLength": 4, "maxLength": 12 },
+        "gradeBand": { "type": "string", "enum": ["SMP", "SMA"] },
+        "subject": { "type": "string", "minLength": 2, "maxLength": 40 },
+        "teacherUid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "teacherName": { "type": "string", "minLength": 1, "maxLength": 24 },
+        "materialIds": { "type": "array" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "code", "gradeBand", "subject", "teacherUid", "teacherName", "materialIds", "updatedAt"]
+    },
+    "ClassMembership": {
+      "title": "ClassMembership",
+      "description": "Student enrollment and progress analytics snapshot inside a Teacher's class.",
+      "type": "object",
+      "properties": {
+        "classId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "teacherUid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "studentUid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "studentName": { "type": "string", "minLength": 1, "maxLength": 24 },
+        "gradeBand": { "type": "string", "enum": ["SMP", "SMA"] },
+        "xp": { "type": "number" },
+        "pts": { "type": "number" },
+        "completedMaterials": { "type": "number" },
+        "completedQuizzes": { "type": "number" },
+        "wrongAttempts": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["classId", "teacherUid", "studentUid", "studentName", "gradeBand", "xp", "pts", "completedMaterials", "completedQuizzes", "wrongAttempts", "updatedAt"]
+    },
+    "TeacherAssignment": {
+      "title": "TeacherAssignment",
+      "description": "Task or material module distributed by a Teacher to a class.",
+      "type": "object",
+      "properties": {
+        "classId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "teacherUid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "title": { "type": "string", "minLength": 3, "maxLength": 100 },
+        "gradeBand": { "type": "string", "enum": ["SMP", "SMA"] },
+        "materialId": { "type": "number" },
+        "dueDate": { "type": "string", "minLength": 4, "maxLength": 20 },
+        "notes": { "type": "string", "minLength": 0, "maxLength": 240 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["classId", "teacherUid", "title", "gradeBand", "materialId", "dueDate", "notes", "updatedAt"]
+    },
+    "SystemSetting": {
+      "title": "SystemSetting",
+      "description": "Global application settings (lab announcement or system maintenance mode).",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string", "minLength": 0, "maxLength": 240 },
+        "enabled": { "type": "boolean" },
+        "updatedByUid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["text", "updatedByUid", "updatedAt"]
+    },
+    "CustomQuestion": {
+      "title": "CustomQuestion",
+      "description": "Interactive quiz question created by a Teacher or Admin for SMP/SMA students.",
+      "type": "object",
+      "properties": {
+        "materialId": { "type": "number" },
+        "gradeBand": { "type": "string", "enum": ["SMP", "SMA", "Semua"] },
+        "question": { "type": "string", "minLength": 5, "maxLength": 220 },
+        "options": { "type": "array" },
+        "answerIndex": { "type": "number" },
+        "explanation": { "type": "string", "minLength": 5, "maxLength": 300 },
+        "points": { "type": "number" },
+        "createdByUid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "createdByName": { "type": "string", "minLength": 1, "maxLength": 24 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["materialId", "gradeBand", "question", "options", "answerIndex", "explanation", "points", "createdByUid", "createdByName", "createdAt"]
+    },
+    "UsernameLookup": {
+      "title": "UsernameLookup",
+      "description": "Hashed username lookup index binding a normalized username to its verified owner UID and email.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "usernameLower": { "type": "string", "minLength": 2, "maxLength": 24 },
+        "email": { "type": "string", "minLength": 3, "maxLength": 160 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "usernameLower", "email", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProgress" },
+      "description": "Private profile, SMP/SMA track, 3D avatar, and learning progress per user."
+    },
+    "/leaderboard/{userId}": {
+      "schema": { "$ref": "#/entities/LeaderboardEntry" },
+      "description": "Public non-PII standings for daily/weekly/overall rankings."
+    },
+    "/admins/{userId}": {
+      "schema": { "$ref": "#/entities/AdminRole" },
+      "description": "Authoritative Admin UID allowlist."
+    },
+    "/schools/{schoolId}": {
+      "schema": { "$ref": "#/entities/SchoolVerification" },
+      "description": "School registration and verification queue managed by Admin."
+    },
+    "/classes/{classId}": {
+      "schema": { "$ref": "#/entities/Classroom" },
+      "description": "Classrooms owned by Teachers for SMP/SMA cohorts."
+    },
+    "/classMembers/{memberDocId}": {
+      "schema": { "$ref": "#/entities/ClassMembership" },
+      "description": "Student enrollments and live progress analytics synced to teachers."
+    },
+    "/assignments/{assignmentId}": {
+      "schema": { "$ref": "#/entities/TeacherAssignment" },
+      "description": "Assignments and material distributions sent by Teachers."
+    },
+    "/settings/{settingId}": {
+      "schema": { "$ref": "#/entities/SystemSetting" },
+      "description": "Global announcement and maintenance mode controls."
+    },
+    "/customQuestions/{questionId}": {
+      "schema": { "$ref": "#/entities/CustomQuestion" },
+      "description": "Supplementary interactive quiz questions created by Teachers and Admins."
+    },
+    "/usernames/{usernameHash}": {
+      "schema": { "$ref": "#/entities/UsernameLookup" },
+      "description": "SHA-256 keyed username lookup supporting cross-device username sign-in without listing."
+    }
+  }
+}

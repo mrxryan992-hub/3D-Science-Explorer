@@ -1,0 +1,145 @@
+<!DOCTYPE html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>3D Science Explorer</title>
+<style>
+:root{--g:#2ee59d}
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.5 'Segoe UI',system-ui,sans-serif;color:#eef1ff;min-height:100vh;background:radial-gradient(circle at 15% 10%,#3b2a8f 0,transparent 40%),radial-gradient(circle at 85% 30%,#0f5d8f 0,transparent 40%),radial-gradient(circle at 50% 100%,#0b6b4f 0,transparent 45%),#0b0e26;background-attachment:fixed}
+header{padding:22px 14px 8px;text-align:center}
+header h1{margin:0;font-size:clamp(1.6rem,5vw,2.4rem);letter-spacing:-.5px;background:linear-gradient(90deg,#7aa2ff,#c39bff,#2ee59d);-webkit-background-clip:text;background-clip:text;color:transparent}
+header p{margin:4px 0 0;opacity:.7;font-size:.9rem}
+nav{position:sticky;top:0;z-index:5;display:flex;gap:6px;padding:10px;justify-content:center;flex-wrap:wrap;background:rgba(11,14,38,.75);backdrop-filter:blur(12px);border-bottom:1px solid #ffffff14}
+button,select,input{font:inherit;border-radius:12px;border:0;padding:10px 16px;min-height:42px}
+button{background:linear-gradient(135deg,#4f7cff,#9b6bff);color:#fff;font-weight:600;cursor:pointer;transition:.2s;box-shadow:0 4px 14px #4f7cff55}
+button:hover{transform:translateY(-2px);filter:brightness(1.15)}
+nav button{background:#ffffff14;box-shadow:none}nav button.on{background:linear-gradient(135deg,#2ee59d,#16a34a);color:#04210f}
+select,input{background:#ffffff1a;color:#fff;border:1px solid #ffffff26}select option{color:#000}
+main{max-width:920px;margin:auto;padding:10px 12px 40px}
+.card{background:#ffffff12;border:1px solid #ffffff1f;border-radius:20px;padding:16px;margin:12px 0;backdrop-filter:blur(8px);box-shadow:0 8px 30px #0005;animation:pop .35s}
+@keyframes pop{from{opacity:0;transform:translateY(8px)}}
+h2,h3{margin:.3em 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.grid>.card{margin:0;transition:.25s}.grid>.card:hover{transform:translateY(-5px);border-color:#9b6bffaa}
+.card.grid>div{background:#ffffff0f;border-radius:14px;padding:12px;text-align:center}
+.card.grid>div h2{font-size:2rem;margin:0;background:linear-gradient(90deg,#7aa2ff,#2ee59d);-webkit-background-clip:text;background-clip:text;color:transparent}
+.bar{height:12px;background:#0006;border-radius:9px;overflow:hidden;margin:6px 0}
+.bar i{display:block;height:100%;border-radius:9px;background:linear-gradient(90deg,#4f7cff,#2ee59d);box-shadow:0 0 12px #2ee59d88;transition:width .6s}
+img{width:100%;aspect-ratio:200/110;object-fit:cover;border-radius:14px}
+.lock{opacity:.3;filter:grayscale(1)}
+.hero{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.ring{width:112px;height:112px;border-radius:50%;background:conic-gradient(var(--g) calc(var(--p)*1%),#ffffff1a 0);display:grid;place-content:center;text-align:center;position:relative;box-shadow:0 0 25px #2ee59d44}
+.ring::before{content:'';position:absolute;inset:10px;border-radius:50%;background:#15194a}
+.ring *{position:relative}.ring b{font-size:2.2rem;line-height:1}
+.opt{display:block;width:100%;margin:8px 0;text-align:left;background:#ffffff14;border:1px solid #ffffff24;box-shadow:none}
+.ok{background:linear-gradient(135deg,#16a34a,#22c55e)!important}.no{background:linear-gradient(135deg,#b91c1c,#ef4444)!important}
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#2ee59d,#7aa2ff);color:#021;padding:12px 20px;border-radius:24px;font-weight:700;display:none;z-index:9;box-shadow:0 8px 24px #0008}
+canvas{border-radius:16px;max-width:100%;box-shadow:0 0 30px #4f7cff44;border:1px solid #ffffff22}
+table{width:100%;border-collapse:collapse}td,th{padding:10px;text-align:left}tr+tr td{border-top:1px solid #ffffff18}tr:nth-child(2) td{color:#fde047;font-weight:700}
+.bulb{font-size:64px;transition:.3s}small{opacity:.75}
+@media(max-width:520px){nav button{padding:8px 10px;font-size:.85rem}}
+</style></head><body>
+<header><h1>🔬 3D Science Explorer</h1><p>Belajar sains sambil bermain • kumpulkan XP & badge</p></header><nav id="nav"></nav><main id="app"></main><div id="toast"></div>
+<script>
+const K='3dse_v1',$=id=>document.getElementById(id);
+const CAT={fis:['Fisika','⚡','#3b6cf6'],kim:['Kimia','🧪','#8b5cf6'],bio:['Biologi','🌱','#22c55e'],ast:['Astronomi','🪐','#f59e0b']};
+const img=(e,c)=>'data:image/svg+xml,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 110"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c}"/><stop offset="1" stop-color="#1a1050"/></linearGradient><radialGradient id="r"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs><rect width="200" height="110" fill="url(#g)"/><circle cx="100" cy="55" r="55" fill="url(#r)"/><circle cx="25" cy="20" r="2" fill="#fff"/><circle cx="170" cy="30" r="1.5" fill="#fff"/><circle cx="160" cy="85" r="2.5" fill="#fff" opacity=".7"/><circle cx="40" cy="95" r="30" fill="#fff" opacity=".06"/><circle cx="175" cy="15" r="25" fill="#fff" opacity=".06"/><text x="100" y="75" font-size="58" text-anchor="middle">${e}</text></svg>`);
+const M={};[
+[1,'Gaya Gravitasi','fis','Mengapa benda jatuh?','Gravitasi adalah gaya tarik antar benda bermassa. Berat = massa × g (g Bumi ≈ 9,8 m/s²). Di Bulan g ≈ 1,6 m/s²: berat lebih kecil, tetapi massa tetap.','🍎',1],
+[2,'Rangkaian Listrik','fis','Seri dan paralel','Hukum Ohm: V = I × R. Seri: hambatan dijumlahkan, arus sama. Paralel: tegangan sama, hambatan total lebih kecil dari hambatan terkecil.','💡',2],
+[3,'Gelombang Bunyi','fis','Bunyi butuh medium','Bunyi adalah gelombang longitudinal yang merambat lewat medium (udara, air, padat). Frekuensi diukur dalam Hertz (Hz).','🔊',2],
+[4,'Atom dan Unsur','kim','Penyusun materi','Atom terdiri dari proton (+) dan neutron di inti, serta elektron (−) mengelilingi inti. Air berlambang H₂O.','⚛️',1],
+[5,'Asam dan Basa','kim','Skala pH','pH < 7 asam, pH = 7 netral, pH > 7 basa. Lakmus biru menjadi merah pada larutan asam.','🧫',2],
+[6,'Wujud Zat','kim','Padat, cair, gas','Es mencair menjadi air (0 °C), air mendidih pada 100 °C (1 atm) menjadi uap. Perubahan wujud tidak mengubah jenis zat.','🧊',1],
+[7,'Fotosintesis','bio','Dapur tumbuhan','Tumbuhan menyerap CO₂ dan air, dengan cahaya matahari menghasilkan glukosa dan oksigen di dalam kloroplas.','🌿',2],
+[8,'Sel','bio','Unit kehidupan','Sel adalah unit terkecil makhluk hidup. Inti sel mengendalikan aktivitas sel dan menyimpan DNA.','🔬',2],
+[9,'Rantai Makanan','bio','Aliran energi','Produsen (tumbuhan hijau) → konsumen → pengurai. Energi mengalir satu arah dan berkurang pada tiap tingkat.','🦊',1],
+[10,'Tata Surya','ast','Keluarga Matahari','Delapan planet mengorbit Matahari. Merkurius terdekat, Jupiter terbesar. Makin jauh, makin lama periode orbitnya (hukum Kepler).','☀️',1],
+[11,'Fase Bulan','ast','Bulan berubah bentuk','Fase terjadi karena sebagian Bulan yang terang terlihat dari Bumi berbeda-beda. Purnama: Bumi berada di antara Matahari dan Bulan.','🌕',2],
+[12,'Bintang','ast','Matahari sang bintang','Bintang adalah bola gas panas yang memancarkan cahaya sendiri lewat reaksi fusi. Matahari adalah bintang terdekat dari Bumi.','⭐',1]
+].forEach(a=>M[a[0]]={id:a[0],judul:a[1],k:a[2],d:a[3],c:a[4],e:a[5],lv:['','Mudah','Sedang'][a[6]],imageUrl:img(a[5],CAT[a[2]][2])});
+const Q=[
+[1,1,'Apa yang menyebabkan benda jatuh ke permukaan Bumi?',['Gaya gravitasi','Gaya magnet','Tekanan udara'],0,'Gravitasi Bumi menarik semua benda bermassa ke pusat Bumi.'],
+[2,1,'Gravitasi Bulan dibanding Bumi kira-kira…',['Sama besar','Sekitar 1/6','6 kali lebih besar'],1,'Bulan bermassa lebih kecil sehingga gravitasinya sekitar 1/6 Bumi.'],
+[3,2,'Pada rangkaian seri, jika satu lampu putus maka lampu lain…',['Makin terang','Tetap menyala','Padam'],2,'Rangkaian seri hanya punya satu jalur arus; jika terputus, arus berhenti.'],
+[4,2,'Tegangan 6 V dan hambatan 3 Ω menghasilkan arus…',['2 A','18 A','0,5 A'],0,'I = V / R = 6 / 3 = 2 A.'],
+[5,3,'Bunyi tidak dapat merambat di…',['Air','Ruang hampa','Besi'],1,'Bunyi membutuhkan medium; ruang hampa tidak punya partikel perantara.'],
+[6,3,'Satuan frekuensi adalah…',['Newton','Hertz','Joule'],1,'Frekuensi (getaran per detik) diukur dalam Hertz.'],
+[7,4,'Rumus kimia air adalah…',['CO₂','H₂O','O₂'],1,'Satu molekul air = 2 atom hidrogen + 1 atom oksigen.'],
+[8,4,'Partikel bermuatan positif di inti atom adalah…',['Elektron','Neutron','Proton'],2,'Proton positif, neutron netral, elektron negatif dan berada di luar inti.'],
+[9,5,'Larutan dengan pH 2 bersifat…',['Asam','Netral','Basa'],0,'pH di bawah 7 berarti asam.'],
+[10,5,'Lakmus biru dalam larutan asam berubah menjadi…',['Hijau','Merah','Tetap biru'],1,'Asam mengubah lakmus biru menjadi merah.'],
+[11,6,'Perubahan wujud es menjadi air disebut…',['Menguap','Membeku','Mencair'],2,'Padat → cair = mencair; cair → padat = membeku.'],
+[12,6,'Air murni mendidih pada tekanan 1 atm di suhu…',['50 °C','100 °C','0 °C'],1,'Titik didih air murni 100 °C pada 1 atm.'],
+[13,7,'Gas yang diserap tumbuhan saat fotosintesis adalah…',['Karbon dioksida','Oksigen','Nitrogen'],0,'Tumbuhan menyerap CO₂ dan melepaskan O₂.'],
+[14,7,'Fotosintesis terjadi di organel…',['Mitokondria','Inti sel','Kloroplas'],2,'Kloroplas berisi klorofil penangkap cahaya.'],
+[15,8,'Pusat pengendali aktivitas sel adalah…',['Inti sel','Dinding sel','Vakuola'],0,'Inti sel menyimpan DNA dan mengatur kegiatan sel.'],
+[16,9,'Produsen dalam rantai makanan adalah…',['Singa','Tumbuhan hijau','Jamur'],1,'Tumbuhan hijau membuat makanan sendiri lewat fotosintesis.'],
+[17,10,'Planet terdekat dari Matahari adalah…',['Venus','Bumi','Merkurius'],2,'Merkurius punya orbit terkecil.'],
+[18,10,'Planet terbesar di tata surya adalah…',['Jupiter','Saturnus','Neptunus'],0,'Jupiter berdiameter sekitar 11 kali Bumi.'],
+[19,11,'Purnama terjadi ketika…',['Bulan di antara Bumi dan Matahari','Bumi di antara Matahari dan Bulan','Bulan tertutup awan'],1,'Sisi Bulan yang terang menghadap Bumi penuh. Bulan di antara Bumi dan Matahari adalah bulan baru.'],
+[20,12,'Matahari termasuk…',['Planet','Bintang','Satelit'],1,'Matahari memancarkan cahaya sendiri dari reaksi fusi, ciri bintang.']
+].map(a=>({id:a[0],m:a[1],q:a[2],o:a[3],a:a[4],x:a[5],p:10}));
+const def=()=>({name:'Pelajar',xp:0,pts:0,badges:[],read:{},quiz:{},daily:{},sims:{},wrong:0});
+let S;try{S=Object.assign(def(),JSON.parse(localStorage.getItem(K))||{})}catch(e){S=def()}
+const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
+const lvl=()=>Math.floor(S.xp/50)+1,today=()=>new Date().toLocaleDateString('sv-SE');
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const B=[['first','Langkah Pertama','🥇','Jawab 1 kuis benar',()=>Object.keys(S.quiz).length>=1],
+['lvl3','Level 3','🚀','Capai level 3',()=>lvl()>=3],
+['read','Kutu Buku','📚','Selesaikan 6 materi',()=>Object.keys(S.read).length>=6],
+['cat','Ahli Kategori','🏅','Semua kuis satu kategori benar',()=>Object.keys(CAT).some(k=>Q.filter(q=>M[q.m].k==k).every(q=>S.quiz[q.id]))],
+['sim','Penjelajah','🔭','Coba 3 simulasi',()=>Object.keys(S.sims).length>=3],
+['day','Pejuang Harian','🔥','Daily challenge benar',()=>Object.keys(S.daily).length>=1]];
+function toast(t){const e=$('toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',2600)}
+function check(){B.forEach(b=>{if(!S.badges.includes(b[0])&&b[4]()){S.badges.push(b[0]);toast('🏆 Badge baru: '+b[1])}});save()}
+function gain(n){const l=lvl();S.xp+=n;if(lvl()>l)toast('⬆️ Naik ke Level '+lvl()+'!')}
+let V='dash',raf=0,qCat='all',qi=0,ans=null,res='',cur=null,simT='g';
+const stop=()=>cancelAnimationFrame(raf);
+function go(v){stop();V=v;ans=null;res='';cur=null;render()}
+function render(){
+ $('nav').innerHTML=[['dash','🏠 Dashboard'],['learn','📖 Materi'],['quiz','❓ Kuis'],['daily','🔥 Harian'],['sim','🧪 Simulasi'],['lb','🏆 Peringkat']].map(a=>`<button class="${V==a[0]?'on':''}" onclick="go('${a[0]}')">${a[1]}</button>`).join('');
+ $('app').innerHTML=({dash,learn,quiz:()=>quizV(false),daily:()=>quizV(true),sim:simV,lb})[V]();
+ if(V=='sim')simInit();
+}
+const prog=k=>{const ms=Object.values(M).filter(m=>m.k==k),qs=Q.filter(q=>M[q.m].k==k);return Math.round(100*(ms.filter(m=>S.read[m.id]).length+qs.filter(q=>S.quiz[q.id]).length)/(ms.length+qs.length))};
+function dash(){const l=lvl(),x=S.xp%50;
+ return `<div class="card hero"><div class="ring" style="--p:${x*2}"><b>${l}</b><small>LEVEL</small></div><div style="flex:1;min-width:190px"><small>Halo, penjelajah!</small><h2>${esc(S.name)} <small>• ${S.xp} XP</small></h2><div class="bar"><i style="width:${x*2}%"></i></div><small>${50-x} XP lagi menuju Level ${l+1}</small><br><br><label><small>Ganti alias (bukan nama asli)</small><br><input maxlength="12" value="${esc(S.name)}" onchange="S.name=this.value.trim()||'Pelajar';save();render()"></label></div></div>
+ <div class="card grid"><div>📖 Materi selesai<h2>${Object.keys(S.read).length}/12</h2></div><div>✅ Kuis benar<h2>${Object.keys(S.quiz).length}/20</h2></div><div>⭐ Total poin<h2>${S.pts}</h2></div><div>🏅 Badge<h2>${S.badges.length}/6</h2></div></div>
+ <div class="card"><h3>Progres Kategori</h3>${Object.entries(CAT).map(([k,c])=>`<p>${c[1]} ${c[0]} — ${prog(k)}%</p><div class="bar"><i style="width:${prog(k)}%;background:${c[2]}"></i></div>`).join('')}</div>
+ <div class="card"><h3>Achievement</h3><div class="grid">${B.map(b=>`<div class="${S.badges.includes(b[0])?'':'lock'}"><h2>${b[2]}</h2><b>${b[1]}</b><br><small>${b[3]}</small></div>`).join('')}</div></div>
+ <button style="background:#dc2626" onclick="if(confirm('Reset semua progres?')){S=def();save();qi=0;render()}">🗑️ Reset Progres</button>`}
+function learn(){if(cur){const m=M[cur];return `<div class="card"><button onclick="cur=null;render()">← Kembali</button><img src="${m.imageUrl}" alt="${m.judul}"><h2>${m.e} ${m.judul}</h2><small>${CAT[m.k][0]} • ${m.lv}</small><p>${m.c}</p>${S.read[m.id]?'<b>✅ Selesai</b>':`<button onclick="readM(${m.id})">Tandai selesai (+10 XP)</button>`}</div>`}
+ return `<div class="grid">${Object.values(M).map(m=>`<div class="card"><img src="${m.imageUrl}" alt=""><h3>${m.judul} ${S.read[m.id]?'✅':''}</h3><small>${CAT[m.k][1]} ${CAT[m.k][0]} • ${m.lv}</small><p>${m.d}</p><button onclick="cur=${m.id};render()">Buka</button></div>`).join('')}</div>`}
+function readM(id){if(!S.read[id]){S.read[id]=today();gain(10);check()}render()}
+function dq(){const d=today();return Q[[...d].reduce((a,c)=>a+c.charCodeAt(0)*7,0)%Q.length]}
+function quizV(daily){const pool=Q.filter(q=>qCat=='all'||M[q.m].k==qCat),q=daily?dq():pool[qi%pool.length];
+ let h=daily?`<div class="card"><h3>🔥 Daily Challenge — ${today()}</h3>${S.daily[today()]?'<b>✅ Bonus hari ini sudah diambil</b>':'<small>Jawab benar: bonus +20 XP</small>'}</div>`:
+ `<div class="card">Kategori: <select onchange="qCat=this.value;qi=0;ans=null;res='';render()"><option value="all">Semua (20)</option>${Object.entries(CAT).map(([k,c])=>`<option value="${k}" ${qCat==k?'selected':''}>${c[0]}</option>`).join('')}</select> <small>Soal ${qi%pool.length+1}/${pool.length}</small></div>`;
+ return h+`<div class="card"><small>${CAT[M[q.m].k][0]} • ${M[q.m].judul}</small><h3>${q.q}</h3>${q.o.map((o,i)=>`<button class="opt ${ans===null?'':i==q.a?'ok':i==ans?'no':''}" onclick="pick(${q.id},${i},${daily})">${esc(o)}</button>`).join('')}
+ ${ans===null?'':`<p><b>${ans==q.a?'✅ Benar!':'❌ Salah. Jawaban benar: '+esc(q.o[q.a])}</b><br>${q.x}<br><i>${res}</i></p>${daily?'':'<button onclick="qi++;ans=null;res=\'\';render()">Lanjut →</button>'}`}</div>`}
+function pick(id,i,daily){if(ans!==null)return;const q=Q.find(x=>x.id==id);ans=i;let g=0;res='';
+ if(i==q.a){if(!S.quiz[id]){S.quiz[id]=1;S.pts+=q.p;g+=q.p;res=`+${q.p} poin & XP. `}else res='Poin soal ini sudah pernah diambil. ';
+  if(daily&&!S.daily[today()]){S.daily[today()]=1;g+=20;res+='+20 XP bonus harian.'}}else S.wrong++;
+ gain(g);check();render()}
+function lb(){const r=[['Nova',320],['Rafi',240],['Sari',180],['Dimas',90],[S.name+' (kamu)',S.xp]].sort((a,b)=>b[1]-a[1]);
+ return `<div class="card"><h3>🏆 Leaderboard Lokal (profil demo)</h3><table><tr><th>#</th><th>Alias</th><th>XP</th></tr>${r.map((p,i)=>`<tr><td>${i+1}</td><td>${esc(p[0])}</td><td>${p[1]}</td></tr>`).join('')}</table></div>`}
+function simV(){return `<div class="card"><nav style="padding:0">${[['g','Gravitasi'],['s','Tata Surya'],['c','Rangkaian Listrik']].map(a=>`<button class="${simT==a[0]?'on':''}" onclick="stop();simT='${a[0]}';render()">${a[1]}</button>`).join('')}</nav><div id="sim"></div></div>`}
+function mark(k){if(!S.sims[k]){S.sims[k]=1;check()}}
+function simInit(){const e=$('sim');
+ if(simT=='g'){e.innerHTML=`<p>Jatuh bebas dari 100 m. Pilih planet:</p><select id="pl"><option value="9.8">Bumi (9,8)</option><option value="1.62">Bulan (1,62)</option><option value="3.71">Mars (3,71)</option><option value="24.79">Jupiter (24,79)</option></select> <button onclick="dropG()">Jatuhkan</button><br><br><canvas id="cv" width="320" height="260"></canvas><p id="out"></p>`;ball(0)}
+ if(simT=='s'){mark('s');e.innerHTML=`<p>Periode orbit mengikuti hukum Kepler (T² ∝ a³). Kecepatan: <input type="range" id="sp" min="0.1" max="3" step="0.1" value="1"></p><canvas id="cv" width="320" height="260"></canvas><p><small>Merkurius 0,24 th • Venus 0,61 th • Bumi 1 th • Mars 1,88 th (skala jarak disederhanakan)</small></p>`;solar()}
+ if(simT=='c'){e.innerHTML=`<p>Mode: <select id="md" onchange="circ()"><option value="s">Seri</option><option value="p">Paralel</option></select></p>V: <input type="range" id="v" min="1" max="12" value="6" oninput="circ()"> <b id="vv"></b><br>R1: <input type="range" id="r1" min="1" max="20" value="4" oninput="circ()"> <b id="a1"></b><br>R2: <input type="range" id="r2" min="1" max="20" value="4" oninput="circ()"> <b id="a2"></b><div class="bulb" id="bl">💡</div><p id="out"></p>`;circ()}}
+function ball(y){const c=$('cv').getContext('2d');const gr=c.createLinearGradient(0,0,0,260);gr.addColorStop(0,'#101a4a');gr.addColorStop(1,'#1c0f3d');c.fillStyle=gr;c.fillRect(0,0,320,260);c.fillStyle='#fff6';for(let i=0;i<25;i++)c.fillRect((i*97)%320,(i*53)%230,1.5,1.5);c.fillStyle='#fff8';c.font='10px sans-serif';for(let m=0;m<=100;m+=25){c.fillRect(0,15+m*2.2,14,1);c.fillText(m+' m',18,18+m*2.2)}c.fillStyle='#2ee59d';c.fillRect(0,250,320,10);const by=15+y*2.2,r=c.createRadialGradient(155,by-4,2,160,by,13);r.addColorStop(0,'#fff3b0');r.addColorStop(1,'#f59e0b');c.shadowColor='#f59e0b';c.shadowBlur=18;c.fillStyle=r;c.beginPath();c.arc(160,by,13,0,7);c.fill();c.shadowBlur=0}
+function dropG(){mark('g');stop();const g=+$('pl').value,T=Math.sqrt(200/g),t0=performance.now();
+ const f=n=>{const t=Math.min((n-t0)/1000,T),y=.5*g*t*t;ball(y);$('out').textContent=`t = ${t.toFixed(2)} s • v = ${(g*t).toFixed(1)} m/s • jarak = ${y.toFixed(1)} m • waktu total ${T.toFixed(2)} s`;if(t<T)raf=requestAnimationFrame(f)};raf=requestAnimationFrame(f)}
+function solar(){const P=[['#a8a29e',.39,4],['#fbbf24',.72,6],['#38bdf8',1,6.5],['#f87171',1.52,5]];let yr=0,last=performance.now();
+ const f=n=>{const cv=$('cv');if(!cv)return;yr+=(n-last)/1000*$('sp').value*.5;last=n;const c=cv.getContext('2d');
+  const g=c.createRadialGradient(160,130,0,160,130,170);g.addColorStop(0,'#1b1a4e');g.addColorStop(1,'#070916');c.fillStyle=g;c.fillRect(0,0,320,260);
+  c.fillStyle='#fff6';for(let i=0;i<30;i++)c.fillRect((i*89)%320,(i*47)%260,1.4,1.4);
+  const s=c.createRadialGradient(160,130,2,160,130,22);s.addColorStop(0,'#fff7c2');s.addColorStop(.4,'#fbbf24');s.addColorStop(1,'#fbbf2400');c.fillStyle=s;c.beginPath();c.arc(160,130,22,0,7);c.fill();
+  P.forEach(p=>{const r=p[1]*80,th=2*Math.PI*yr/Math.pow(p[1],1.5),x=160+r*Math.cos(th),y=130+r*Math.sin(th);c.strokeStyle='#ffffff22';c.beginPath();c.arc(160,130,r,0,7);c.stroke();const q=c.createRadialGradient(x-2,y-2,1,x,y,p[2]);q.addColorStop(0,'#fff');q.addColorStop(.3,p[0]);q.addColorStop(1,'#000a');c.shadowColor=p[0];c.shadowBlur=10;c.fillStyle=q;c.beginPath();c.arc(x,y,p[2],0,7);c.fill();c.shadowBlur=0});
+  raf=requestAnimationFrame(f)};raf=requestAnimationFrame(f)}
+function circ(){mark('c');const V=+$('v').value,a=+$('r1').value,b=+$('r2').value,s=$('md').value=='s',R=s?a+b:a*b/(a+b),I=V/R;
+ $('vv').textContent=V+' V';$('a1').textContent=a+' Ω';$('a2').textContent=b+' Ω';
+ $('bl').style.opacity=.15+.85*Math.min(1,I/3);$('bl').style.filter=`drop-shadow(0 0 ${Math.min(30,I*8)}px #fde047)`;
+ $('out').innerHTML=`R total = <b>${R.toFixed(2)} Ω</b> (${s?'R1+R2':'R1·R2/(R1+R2)'})<br>I = V/R = <b>${I.toFixed(2)} A</b> • P = ${(V*I).toFixed(1)} W`}
+check();render();
+</script></body></html>

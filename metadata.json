@@ -1,0 +1,8 @@
+{
+  "name": "3D Science Explorer",
+  "description": "Platform pembelajaran sains interaktif 3D bergaya claymorphic untuk siswa SMP dan SMA, dilengkapi avatar 3D, simulasi fisika & astronomi, studio guru, serta panel verifikasi admin.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,0 +1,380 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isBootstrapAdmin() {
+      return isSignedIn()
+        && request.auth.token.email == 'ryanmuhammad992@gmail.com'
+        && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        isBootstrapAdmin()
+      );
+    }
+
+    function isValidAvatarConfig(cfg) {
+      return cfg is map
+        && cfg.keys().hasAll(['suitColor', 'hairStyle', 'visor', 'accessory', 'skinTone'])
+        && cfg.keys().hasOnly(['suitColor', 'hairStyle', 'visor', 'accessory', 'skinTone'])
+        && cfg.suitColor is string && cfg.suitColor.size() >= 1 && cfg.suitColor.size() <= 24
+        && cfg.hairStyle is string && cfg.hairStyle.size() >= 1 && cfg.hairStyle.size() <= 24
+        && cfg.visor is string && cfg.visor.size() >= 1 && cfg.visor.size() <= 24
+        && cfg.accessory is string && cfg.accessory.size() >= 1 && cfg.accessory.size() <= 24
+        && cfg.skinTone is string && cfg.skinTone.size() >= 1 && cfg.skinTone.size() <= 24;
+    }
+
+    function isValidUserProgress(data, userId) {
+      return data.keys().hasAll(['uid', 'name', 'accountType', 'gradeBand', 'schoolName', 'avatarConfig', 'xp', 'pts', 'wrong', 'badges', 'read', 'quiz', 'daily', 'sims', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'name', 'accountType', 'gradeBand', 'schoolName', 'avatarConfig', 'xp', 'pts', 'wrong', 'badges', 'read', 'quiz', 'daily', 'sims', 'updatedAt'])
+        && data.uid is string
+        && data.uid == userId
+        && data.uid.size() <= 128
+        && data.name is string
+        && data.name.size() >= 1
+        && data.name.size() <= 24
+        && data.accountType in ['student', 'teacher']
+        && data.gradeBand in ['SMP', 'SMA']
+        && data.schoolName is string
+        && data.schoolName.size() <= 80
+        && isValidAvatarConfig(data.avatarConfig)
+        && data.xp is number
+        && data.xp >= 0
+        && data.xp <= 1000000
+        && data.pts is number
+        && data.pts >= 0
+        && data.pts <= 1000000
+        && data.wrong is number
+        && data.wrong >= 0
+        && data.wrong <= 1000000
+        && data.badges is list
+        && data.badges.size() <= 8
+        && (data.badges.size() == 0 || data.badges[0] is string)
+        && data.read is map
+        && data.read.size() <= 60
+        && data.quiz is map
+        && data.quiz.size() <= 250
+        && data.daily is map
+        && data.daily.size() <= 3650
+        && data.sims is map
+        && data.sims.size() <= 20
+        && data.updatedAt is timestamp
+        && data.updatedAt == request.time;
+    }
+
+    function isValidLeaderboardEntry(data, userId) {
+      return data.keys().hasAll(['uid', 'name', 'accountType', 'gradeBand', 'avatarConfig', 'xp', 'weeklyXp', 'dailyXp', 'level', 'isPublic', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'name', 'accountType', 'gradeBand', 'avatarConfig', 'xp', 'weeklyXp', 'dailyXp', 'level', 'isPublic', 'updatedAt'])
+        && data.uid is string
+        && data.uid == userId
+        && data.uid.size() <= 128
+        && data.name is string
+        && data.name.size() >= 1
+        && data.name.size() <= 24
+        && data.accountType in ['student', 'teacher']
+        && data.gradeBand in ['SMP', 'SMA']
+        && isValidAvatarConfig(data.avatarConfig)
+        && data.xp is number
+        && data.xp >= 0
+        && data.xp <= 1000000
+        && data.weeklyXp is number
+        && data.weeklyXp >= 0
+        && data.weeklyXp <= 1000000
+        && data.dailyXp is number
+        && data.dailyXp >= 0
+        && data.dailyXp <= 1000000
+        && data.level is number
+        && data.level >= 1
+        && data.level <= 20000
+        && data.isPublic is bool
+        && data.isPublic == true
+        && data.updatedAt is timestamp
+        && data.updatedAt == request.time;
+    }
+
+    function isValidAdminRole(data, userId) {
+      return data.keys().hasAll(['uid', 'grantedBy', 'createdAt'])
+        && data.keys().hasOnly(['uid', 'grantedBy', 'createdAt'])
+        && data.uid is string
+        && data.uid == userId
+        && data.uid.size() <= 128
+        && data.grantedBy is string
+        && data.grantedBy.size() >= 1
+        && data.grantedBy.size() <= 128
+        && data.createdAt is timestamp
+        && data.createdAt == request.time;
+    }
+
+    function isValidSchool(data) {
+      return data.keys().hasAll(['name', 'city', 'level', 'status', 'requestedByUid', 'verifiedByUid', 'updatedAt'])
+        && data.keys().hasOnly(['name', 'city', 'level', 'status', 'requestedByUid', 'verifiedByUid', 'updatedAt'])
+        && data.name is string && data.name.size() >= 2 && data.name.size() <= 80
+        && data.city is string && data.city.size() >= 2 && data.city.size() <= 50
+        && data.level in ['SMP', 'SMA', 'SMP & SMA']
+        && data.status in ['pending', 'verified', 'rejected']
+        && data.requestedByUid is string && data.requestedByUid.size() >= 1 && data.requestedByUid.size() <= 128
+        && data.verifiedByUid is string && data.verifiedByUid.size() <= 128
+        && data.updatedAt is timestamp
+        && data.updatedAt == request.time;
+    }
+
+    function isValidClassroom(data) {
+      return data.keys().hasAll(['name', 'code', 'gradeBand', 'subject', 'teacherUid', 'teacherName', 'materialIds', 'updatedAt'])
+        && data.keys().hasOnly(['name', 'code', 'gradeBand', 'subject', 'teacherUid', 'teacherName', 'materialIds', 'updatedAt'])
+        && data.name is string && data.name.size() >= 2 && data.name.size() <= 60
+        && data.code is string && data.code.size() >= 4 && data.code.size() <= 12 && data.code.matches('^[A-Z0-9\\-]+$')
+        && data.gradeBand in ['SMP', 'SMA']
+        && data.subject is string && data.subject.size() >= 2 && data.subject.size() <= 40
+        && data.teacherUid is string && data.teacherUid.size() >= 1 && data.teacherUid.size() <= 128
+        && data.teacherName is string && data.teacherName.size() >= 1 && data.teacherName.size() <= 24
+        && data.materialIds is list && data.materialIds.size() <= 24
+        && (data.materialIds.size() == 0 || data.materialIds[0] is number)
+        && data.updatedAt is timestamp
+        && data.updatedAt == request.time;
+    }
+
+    function isValidClassMember(data) {
+      return data.keys().hasAll(['classId', 'teacherUid', 'studentUid', 'studentName', 'gradeBand', 'xp', 'pts', 'completedMaterials', 'completedQuizzes', 'wrongAttempts', 'updatedAt'])
+        && data.keys().hasOnly(['classId', 'teacherUid', 'studentUid', 'studentName', 'gradeBand', 'xp', 'pts', 'completedMaterials', 'completedQuizzes', 'wrongAttempts', 'updatedAt'])
+        && data.classId is string && isValidId(data.classId)
+        && data.teacherUid is string && data.teacherUid.size() >= 1 && data.teacherUid.size() <= 128
+        && data.studentUid is string && data.studentUid.size() >= 1 && data.studentUid.size() <= 128
+        && data.studentName is string && data.studentName.size() >= 1 && data.studentName.size() <= 24
+        && data.gradeBand in ['SMP', 'SMA']
+        && data.xp is number && data.xp >= 0 && data.xp <= 1000000
+        && data.pts is number && data.pts >= 0 && data.pts <= 1000000
+        && data.completedMaterials is number && data.completedMaterials >= 0 && data.completedMaterials <= 100
+        && data.completedQuizzes is number && data.completedQuizzes >= 0 && data.completedQuizzes <= 250
+        && data.wrongAttempts is number && data.wrongAttempts >= 0 && data.wrongAttempts <= 1000000
+        && data.updatedAt is timestamp
+        && data.updatedAt == request.time;
+    }
+
+    function isValidAssignment(data) {
+      return data.keys().hasAll(['classId', 'teacherUid', 'title', 'gradeBand', 'materialId', 'dueDate', 'notes', 'updatedAt'])
+        && data.keys().hasOnly(['classId', 'teacherUid', 'title', 'gradeBand', 'materialId', 'dueDate', 'notes', 'updatedAt'])
+        && data.classId is string && isValidId(data.classId)
+        && data.teacherUid is string && data.teacherUid.size() >= 1 && data.teacherUid.size() <= 128
+        && data.title is string && data.title.size() >= 3 && data.title.size() <= 100
+        && data.gradeBand in ['SMP', 'SMA']
+        && data.materialId is number && data.materialId >= 1 && data.materialId <= 20
+        && data.dueDate is string && data.dueDate.size() >= 4 && data.dueDate.size() <= 20
+        && data.notes is string && data.notes.size() <= 240
+        && data.updatedAt is timestamp
+        && data.updatedAt == request.time;
+    }
+
+    function isValidSetting(data) {
+      return data.keys().hasAll(['text', 'updatedByUid', 'updatedAt'])
+        && data.keys().hasOnly(['text', 'enabled', 'updatedByUid', 'updatedAt'])
+        && data.text is string
+        && data.text.size() <= 240
+        && (!('enabled' in data) || data.enabled is bool)
+        && data.updatedByUid is string
+        && data.updatedByUid == request.auth.uid
+        && data.updatedByUid.size() <= 128
+        && data.updatedAt is timestamp
+        && data.updatedAt == request.time;
+    }
+
+    function isValidCustomQuestion(data) {
+      return data.keys().hasAll(['materialId', 'gradeBand', 'question', 'options', 'answerIndex', 'explanation', 'points', 'createdByUid', 'createdByName', 'createdAt'])
+        && data.keys().hasOnly(['materialId', 'gradeBand', 'question', 'options', 'answerIndex', 'explanation', 'points', 'createdByUid', 'createdByName', 'createdAt'])
+        && data.materialId is number
+        && data.materialId >= 1
+        && data.materialId <= 20
+        && data.gradeBand in ['SMP', 'SMA', 'Semua']
+        && data.question is string
+        && data.question.size() >= 5
+        && data.question.size() <= 220
+        && data.options is list
+        && data.options.size() == 3
+        && data.options[0] is string
+        && data.options[1] is string
+        && data.options[2] is string
+        && data.answerIndex is number
+        && data.answerIndex >= 0
+        && data.answerIndex <= 2
+        && data.explanation is string
+        && data.explanation.size() >= 5
+        && data.explanation.size() <= 300
+        && data.points is number
+        && data.points == 10
+        && data.createdByUid is string
+        && data.createdByUid == request.auth.uid
+        && data.createdByUid.size() <= 128
+        && data.createdByName is string
+        && data.createdByName.size() >= 1
+        && data.createdByName.size() <= 24
+        && data.createdAt is timestamp
+        && data.createdAt == request.time;
+    }
+
+    function isValidUsernameMapping(data) {
+      return data.keys().hasAll(['uid', 'usernameLower', 'email', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'usernameLower', 'email', 'updatedAt'])
+        && data.uid is string
+        && data.uid == request.auth.uid
+        && data.uid.size() >= 1
+        && data.uid.size() <= 128
+        && data.usernameLower is string
+        && data.usernameLower.size() >= 2
+        && data.usernameLower.size() <= 24
+        && data.email is string
+        && data.email.size() >= 3
+        && data.email.size() <= 160
+        && data.email == request.auth.token.email
+        && data.updatedAt is timestamp
+        && data.updatedAt == request.time;
+    }
+
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isSignedIn() && (existing().uid == request.auth.uid || isBootstrapAdmin());
+      allow create: if isValidId(userId) && isOwner(userId) && isValidUserProgress(incoming(), userId);
+      allow update: if isValidId(userId)
+        && (isOwner(userId) || isAdmin())
+        && isValidUserProgress(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'accountType', 'gradeBand', 'schoolName', 'avatarConfig', 'xp', 'pts', 'wrong', 'badges', 'read', 'quiz', 'daily', 'sims', 'updatedAt']);
+      allow delete: if isValidId(userId) && (isOwner(userId) || isAdmin());
+    }
+
+    match /leaderboard/{userId} {
+      allow get: if isValidId(userId) && isSignedIn() && existing().isPublic == true;
+      allow list: if isSignedIn() && existing().isPublic == true;
+      allow create: if isValidId(userId) && isOwner(userId) && isValidLeaderboardEntry(incoming(), userId);
+      allow update: if isValidId(userId)
+        && (isOwner(userId) || isAdmin())
+        && isValidLeaderboardEntry(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'accountType', 'gradeBand', 'avatarConfig', 'xp', 'weeklyXp', 'dailyXp', 'level', 'isPublic', 'updatedAt']);
+      allow delete: if isValidId(userId) && (isOwner(userId) || isAdmin());
+    }
+
+    match /admins/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isBootstrapAdmin();
+      allow create: if isValidId(userId) && isAdmin() && isValidAdminRole(incoming(), userId);
+      allow update: if false;
+      allow delete: if isValidId(userId) && isAdmin() && userId != request.auth.uid;
+    }
+
+    match /schools/{schoolId} {
+      allow get: if isValidId(schoolId) && isSignedIn();
+      allow list: if isSignedIn() && (existing().status == 'verified' || existing().requestedByUid == request.auth.uid || isBootstrapAdmin());
+      allow create: if isValidId(schoolId) && isSignedIn() && isValidSchool(incoming())
+        && incoming().requestedByUid == request.auth.uid
+        && (incoming().status == 'pending' || (isAdmin() && incoming().status == 'verified'));
+      allow update: if isValidId(schoolId) && isAdmin() && isValidSchool(incoming())
+        && incoming().requestedByUid == existing().requestedByUid
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'city', 'level', 'status', 'verifiedByUid', 'updatedAt']);
+      allow delete: if isValidId(schoolId) && isAdmin();
+    }
+
+    match /classes/{classId} {
+      allow get: if isValidId(classId) && isSignedIn();
+      allow list: if isSignedIn() && (existing().teacherUid == request.auth.uid || existing().gradeBand in ['SMP', 'SMA'] || isBootstrapAdmin());
+      allow create: if isValidId(classId) && isSignedIn() && isValidClassroom(incoming()) && incoming().teacherUid == request.auth.uid;
+      allow update: if isValidId(classId) && isSignedIn() && isValidClassroom(incoming())
+        && incoming().teacherUid == existing().teacherUid
+        && (existing().teacherUid == request.auth.uid || isAdmin())
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'code', 'gradeBand', 'subject', 'teacherName', 'materialIds', 'updatedAt']);
+      allow delete: if isValidId(classId) && isSignedIn() && (existing().teacherUid == request.auth.uid || isAdmin());
+    }
+
+    match /classMembers/{memberDocId} {
+      allow get: if isValidId(memberDocId) && isSignedIn() && (existing().studentUid == request.auth.uid || existing().teacherUid == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().studentUid == request.auth.uid || existing().teacherUid == request.auth.uid || isBootstrapAdmin());
+      allow create: if isValidId(memberDocId) && isSignedIn() && isValidClassMember(incoming())
+        && incoming().studentUid == request.auth.uid
+        && exists(/databases/$(database)/documents/classes/$(incoming().classId))
+        && get(/databases/$(database)/documents/classes/$(incoming().classId)).data.teacherUid == incoming().teacherUid;
+      allow update: if isValidId(memberDocId) && isSignedIn() && isValidClassMember(incoming())
+        && incoming().classId == existing().classId
+        && incoming().teacherUid == existing().teacherUid
+        && incoming().studentUid == existing().studentUid
+        && existing().studentUid == request.auth.uid
+        && incoming().diff(existing()).affectedKeys().hasOnly(['studentName', 'gradeBand', 'xp', 'pts', 'completedMaterials', 'completedQuizzes', 'wrongAttempts', 'updatedAt']);
+      allow delete: if isValidId(memberDocId) && isSignedIn() && (existing().studentUid == request.auth.uid || existing().teacherUid == request.auth.uid || isAdmin());
+    }
+
+    match /assignments/{assignmentId} {
+      allow get: if isValidId(assignmentId) && isSignedIn();
+      allow list: if isSignedIn() && (existing().teacherUid == request.auth.uid || existing().gradeBand in ['SMP', 'SMA']);
+      allow create: if isValidId(assignmentId) && isSignedIn() && isValidAssignment(incoming())
+        && incoming().teacherUid == request.auth.uid
+        && exists(/databases/$(database)/documents/classes/$(incoming().classId))
+        && get(/databases/$(database)/documents/classes/$(incoming().classId)).data.teacherUid == request.auth.uid;
+      allow update: if isValidId(assignmentId) && isSignedIn() && isValidAssignment(incoming())
+        && incoming().classId == existing().classId
+        && incoming().teacherUid == existing().teacherUid
+        && (existing().teacherUid == request.auth.uid || isAdmin())
+        && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'gradeBand', 'materialId', 'dueDate', 'notes', 'updatedAt']);
+      allow delete: if isValidId(assignmentId) && isSignedIn() && (existing().teacherUid == request.auth.uid || isAdmin());
+    }
+
+    match /settings/{settingId} {
+      allow get: if isValidId(settingId) && isSignedIn();
+      allow list: if false;
+      allow create, update: if isValidId(settingId) && (settingId == 'announcement' || settingId == 'maintenance') && isAdmin() && isValidSetting(incoming());
+      allow delete: if isValidId(settingId) && isAdmin();
+    }
+
+    match /customQuestions/{questionId} {
+      allow get: if isValidId(questionId) && isSignedIn();
+      allow list: if isSignedIn() && (existing().points == 10 || existing().createdByUid == request.auth.uid || isBootstrapAdmin());
+      allow create: if isValidId(questionId) && isSignedIn() && isValidCustomQuestion(incoming());
+      allow update: if false;
+      allow delete: if isValidId(questionId) && isSignedIn() && (existing().createdByUid == request.auth.uid || isAdmin());
+    }
+
+    match /usernames/{usernameHash} {
+      allow get: if isValidId(usernameHash) && usernameHash.size() == 64;
+      allow list: if false;
+      allow create: if isValidId(usernameHash)
+        && usernameHash.size() == 64
+        && request.auth != null
+        && request.auth.token.email != null
+        && isValidUsernameMapping(incoming());
+      allow update: if isValidId(usernameHash)
+        && usernameHash.size() == 64
+        && isSignedIn()
+        && isValidUsernameMapping(incoming())
+        && existing().uid == request.auth.uid
+        && incoming().uid == existing().uid
+        && incoming().diff(existing()).affectedKeys().hasOnly(['usernameLower', 'email', 'updatedAt']);
+      allow delete: if isValidId(usernameHash)
+        && usernameHash.size() == 64
+        && isSignedIn()
+        && (existing().uid == request.auth.uid || isAdmin());
+    }
+  }
+}
